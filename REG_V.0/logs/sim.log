@@ -1,0 +1,35 @@
+Command: /arm/projectscratch/ssg/pj01648_kits/patnar01/my_practice/REGISTER/reg_v.0/./simv -l logs/sim.log
+Chronologic VCS simulator copyright 1991-2025
+Contains Synopsys proprietary information.
+Compiler version X-2025.06_Full64; Runtime version X-2025.06_Full64;  Jun  7 07:00 2026
+VCD+ Writer X-2025.06_Full64 Copyright (c) 1991-2025 by Synopsys Inc.
+[25] Reset Released
+
+==================================
+ Starting Register Verification
+==================================
+
+[36] READ  : ADDR=0x00001000 DATA=0x00000100
+RESET CHECK PASSED
+[55] WRITE : ADDR=0x00001000 DATA=0x0000aa80
+[76] READ  : ADDR=0x00001000 DATA=0x0000aa80
+MODE CHECK PASSED
+ENABLE CHECK PASSED
+[85] HW_STATUS Driven = 0x35
+[95] WRITE : ADDR=0x00001000 DATA=0x0000007f
+[116] READ  : ADDR=0x00001000 DATA=0x00000035
+STATUS RO CHECK PASSED
+[135] WRITE : ADDR=0x00001000 DATA=0xffffffff
+[156] READ  : ADDR=0x00001000 DATA=0x0000ffb5
+RESERVED BIT CHECK PASSED
+
+==================================
+TEST PASSED
+==================================
+
+$finish called from file "./tb/tb_reg_block.sv", line 279.
+$finish at simulation time                  185
+           V C S   S i m u l a t i o n   R e p o r t 
+Time: 185
+CPU Time:      0.170 seconds;       Data structure size:   0.0Mb
+Sun Jun  7 07:00:59 2026
