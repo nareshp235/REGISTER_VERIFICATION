@@ -1,0 +1,186 @@
+Great. Before touching RTL, let's do what a design review would do: define the DMA behavior completely on paper.
+
+Step 1: Define DMA Interface
+
+The DMA should only know about configuration and status.
+
+Inputs from reg_block
+input  logic       clk;
+input  logic       reset_n;
+
+input  logic       enable;
+input  logic [7:0] mode;
+Output to reg_block
+output logic [6:0] status;
+Step 2: Define STATUS Encoding
+
+Let's freeze this now.
+
+STATUS[0] = BUSY
+STATUS[1] = DONE
+STATUS[2] = ERROR
+STATUS[6:3] = RESERVED
+
+Examples:
+
+BUSY  = 0000001 = 0x01
+DONE  = 0000010 = 0x02
+ERROR = 0000100 = 0x04
+Step 3: Define MODE Encoding
+
+Keep it very simple.
+
+MODE = 0x00  -> Normal Transfer
+
+MODE = 0xFF  -> Error Transfer
+
+Everything else:
+
+Reserved for future use
+Step 4: Define State Machine
+
+I would use 4 states.
+
+           +------+
+           | IDLE |
+           +------+
+               |
+               | enable=1
+               v
+
+           +------+
+           | BUSY |
+           +------+
+               |
+          5 clocks
+               |
+         +-----+-----+
+         |           |
+         |           |
+ mode=00 |           | mode=FF
+         v           v
+
+      +------+   +-------+
+      | DONE |   | ERROR |
+      +------+   +-------+
+Step 5: Define State Behavior
+IDLE
+BUSY  = 0
+DONE  = 0
+ERROR = 0
+
+Waiting for:
+
+enable = 1
+BUSY
+BUSY  = 1
+DONE  = 0
+ERROR = 0
+
+Run:
+
+counter = 0 → 5
+DONE
+BUSY  = 0
+DONE  = 1
+ERROR = 0
+
+Remain here until:
+
+enable = 0
+ERROR
+BUSY  = 0
+DONE  = 0
+ERROR = 1
+
+Remain here until:
+
+enable = 0
+Step 6: Expected Software Flow
+Successful Transfer
+
+Software writes:
+
+MODE   = 00
+ENABLE = 1
+
+DMA:
+
+IDLE
+ ↓
+BUSY
+ ↓
+DONE
+
+Software reads:
+
+STATUS = 0x02
+Error Transfer
+
+Software writes:
+
+MODE   = FF
+ENABLE = 1
+
+DMA:
+
+IDLE
+ ↓
+BUSY
+ ↓
+ERROR
+
+Software reads:
+
+STATUS = 0x04
+Step 7: Top-Level Connections
+
+This will be your reg_top.
+
+                     reg_top
+
+      +--------------------------------------+
+      |                                      |
+      |          reg_block                   |
+      |                                      |
+      |  mode   -------------------------+   |
+      |                                  |   |
+      |  enable ----------------------+  |   |
+      |                               |  |   |
+      |                               v  v   |
+      |                         +------------+
+      |                         |  dma_core  |
+      |                         +------------+
+      |                               |
+      |                               |
+      |                               v
+      |                        status[6:0]
+      |                               |
+      |                               |
+      |  STATUS <---------------------+
+      |                                      |
+      +--------------------------------------+
+Step 8: Verification Goals
+
+Once implemented, we should be able to observe:
+
+Test 1
+Write MODE=00
+Write ENABLE=1
+
+STATUS:
+00 → 01 → 02
+
+Meaning:
+
+IDLE → BUSY → DONE
+Test 2
+Write MODE=FF
+Write ENABLE=1
+
+STATUS:
+00 → 01 → 04
+
+Meaning:
+
+IDLE → BUSY → ERROR
