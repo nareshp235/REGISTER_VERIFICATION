@@ -1,0 +1,245 @@
+This log is actually very educational. Let's decode it carefully.
+
+1. Reset Check
+[36] READ : ADDR=0x00001000 DATA=0x00000100
+
+Break it:
+
+MODE   = 0x01
+ENABLE = 0
+STATUS = 0
+
+So:
+
+0x00000100
+
+Exactly matches reset values.
+
+2. RW Check
+
+Write:
+
+[55] WRITE : DATA=0x0000AA80
+
+Meaning:
+
+MODE   = AA
+ENABLE = 1
+STATUS = 00
+
+Read:
+
+[76] READ : DATA=0x0000AA80
+
+Let's decode:
+
+AA00  <- MODE
+0080  <- ENABLE
+0000  <- STATUS
+------------
+AA80
+
+Perfect.
+
+3. RO Check
+
+Hardware drives:
+
+[85] HW_STATUS Driven = 0x35
+
+Software attempts:
+
+[95] WRITE : DATA=0x0000007F
+
+This tries to write:
+
+STATUS = 7F
+
+but STATUS is RO.
+
+Read:
+
+[116] READ : DATA=0x00000035
+
+Decode:
+
+MODE   = 00
+ENABLE = 0
+STATUS = 35
+
+And this is actually a very interesting observation.
+
+Why MODE became 00?
+
+Because your write was:
+
+bus_write(CTRL_REG_ADDR, 32'h0000_007F);
+
+Write logic says:
+
+mode   <= wdata[15:8];
+enable <= wdata[7];
+
+So:
+
+wdata[15:8] = 00
+wdata[7]    = 0
+
+Therefore:
+
+MODE   = 00
+ENABLE = 0
+
+You accidentally overwrote your configuration fields while testing STATUS.
+
+This is not wrong.
+
+But it teaches a very important concept.
+
+Read-Modify-Write (RMW)
+
+Suppose software wants:
+
+STATUS bits untouched
+MODE unchanged
+ENABLE unchanged
+
+It cannot simply do:
+
+WRITE 0x0000007F
+
+because that destroys other fields.
+
+Instead software usually:
+
+Read register
+Modify desired bits
+Write register back
+
+This is called:
+
+Read-Modify-Write (RMW)
+
+A huge SoC concept.
+
+4. Reserved Bit Check
+
+Write:
+
+[135] WRITE : DATA=0xFFFFFFFF
+
+Read:
+
+[156] READ : DATA=0x0000FFB5
+
+Let's decode:
+
+MODE
+
+Bits[15:8] = FF
+
+because:
+
+MODE is RW
+
+ENABLE
+
+Bit[7] = 1
+
+because:
+
+ENABLE is RW
+
+STATUS
+
+Bits[6:0] = 35
+
+because:
+
+hw_status = 35
+
+still being driven by hardware.
+
+Reserved
+
+Bits[31:16] = 0000
+
+even though software wrote:
+
+FFFF
+
+This proves reserved bits are ignored.
+
+One Very Valuable Lesson Hidden in This Log
+
+Look at these two reads:
+
+[76]  READ = 0x0000AA80
+[116] READ = 0x00000035
+
+Many beginners expect:
+
+AA80 + STATUS
+
+But the second write:
+
+0x0000007F
+
+reprogrammed MODE and ENABLE.
+
+Therefore:
+
+AA80 disappeared
+
+This is actually realistic software behavior.
+
+What a Real Register Verification Engineer Notices
+
+From this log I immediately infer:
+
+Register fields are independent
+
+because:
+
+Write #1
+MODE=AA
+ENABLE=1
+
+Write #2
+MODE=00
+ENABLE=0
+
+and the RTL behaved exactly as expected.
+
+A Nice Enhancement
+
+I would modify the write print to show decoded fields:
+
+$display("[%0t] WRITE : ADDR=0x%08h DATA=0x%08h MODE=0x%02h ENABLE=%0b",
+         $time,
+         wr_addr,
+         wr_data,
+         wr_data[15:8],
+         wr_data[7]);
+
+Then your log becomes:
+
+[55] WRITE : ADDR=0x00001000 DATA=0x0000AA80 MODE=AA ENABLE=1
+
+[95] WRITE : ADDR=0x00001000 DATA=0x0000007F MODE=00 ENABLE=0
+
+[135] WRITE : ADDR=0x00001000 DATA=0xFFFFFFFF MODE=FF ENABLE=1
+
+which makes register behavior immediately obvious.
+
+This single simulation log has already taught:
+
+✓ RW fields
+✓ RO fields
+✓ Hardware-driven status
+✓ Reserved bits
+✓ Register field decoding
+✓ Read-Modify-Write implications
+✓ Configuration vs Status registers
+
+That's a lot of SoC knowledge extracted from a very small design.
