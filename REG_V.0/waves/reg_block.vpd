@@ -1,0 +1,4 @@
+dump will be created here
+
+command to OPEN the DUMP :
+<bsub> dve -vpd ../waves/reg_block.vpd &   [ from sim dir ]
