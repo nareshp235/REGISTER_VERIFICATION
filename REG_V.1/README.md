@@ -358,6 +358,22 @@ reg_v.6
 
 reg_v.7
 
+One thing I particularly like about this reg_v.1 step is that it introduces the same software flow used on real SoCs:
+
+CPU writes ENABLE
+        ↓
+Hardware starts
+        ↓
+Hardware sets BUSY
+        ↓
+Hardware finishes
+        ↓
+Hardware sets DONE
+        ↓
+CPU reads STATUS
+
+That is the first true hardware/software interaction cycle.
+
 * Register Abstraction Layer (RAL)
 
 reg_v.8
